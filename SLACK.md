@@ -26,6 +26,15 @@ Slack links the URL automatically; the variable is substituted before posting, s
 
 Needs a paid Slack plan. Whoever builds a workflow owns it, so for something meant to outlive the circle, create it from a team account rather than a personal one.
 
+## Just for yourself
+
+Nothing above has to involve anyone else.
+
+- **Bookmarks in your own DM.** Open the DM with yourself, add the links from the table below as bookmarks. Nobody else can see that conversation, it needs no plan features, and there is nothing to maintain.
+- **A workflow that only messages you.** Build the workflow as above, but point step 2 at **a person → yourself** instead of a channel. Started from the ⚡ menu, the result lands in your DM. Keep the trigger link to yourself and no one else can run it.
+
+If it really is only ever for you, browser bookmarks beat both — Slack adds nothing here except being the window you already have open.
+
 ## Fallback: channel bookmarks
 
 No Workflow Builder needed, two minutes of setup: open the channel → **Add a bookmark** → link, one per duration.

@@ -30,7 +30,7 @@ It works the other way round too: any timer you start by hand writes its duratio
 | `F`                 | fullscreen (for a projector)   |
 | `Esc`               | back to the picker             |
 
-On a touch device the keyboard hints turn into real buttons — Pause, Restart, Sound, Back — and the presets get thumb-sized targets. Fullscreen is dropped there: it is a projector affordance, and iOS Safari has no Fullscreen API for pages anyway.
+On a touch device the keyboard hints turn into real buttons and the presets get thumb-sized targets. Fullscreen only appears where the browser actually has the API — it shows on Android, and is hidden on iOS Safari, which has none for pages.
 
 ## Granularity
 
