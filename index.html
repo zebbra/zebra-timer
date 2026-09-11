@@ -1,4 +1,5 @@
 <meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Zebra Timer</title>
 <!-- Zebra Timer v1 -->
 <link rel="icon" href='data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"%3E%3Crect width="100" height="100" fill="%23000"/%3E%3Cg stroke="%23ff2235" stroke-linecap="round" fill="none" stroke-width="13"%3E%3Cline x1="12" y1="56" x2="40" y2="22"/%3E%3Cline x1="10" y1="90" x2="58" y2="32"/%3E%3Cline x1="42" y1="90" x2="90" y2="32"/%3E%3Cline x1="72" y1="90" x2="80" y2="80" stroke-width="12"/%3E%3C/g%3E%3C/svg%3E'>
@@ -33,7 +34,11 @@
     height: 100dvh;
     display: flex;
     flex-direction: column;
-    padding: var(--pad);
+    padding:
+      max(var(--pad), env(safe-area-inset-top))
+      max(var(--pad), env(safe-area-inset-right))
+      max(var(--pad), env(safe-area-inset-bottom))
+      max(var(--pad), env(safe-area-inset-left));
     gap: var(--pad);
   }
 
@@ -223,6 +228,7 @@
     inset: 0;
     display: grid;
     gap: 0;
+    overflow: hidden;
   }
 
   .tuft {
@@ -276,11 +282,43 @@
   }
 
   .keys { display: flex; gap: 18px; flex-wrap: wrap; justify-content: flex-end; }
+  .keys button { display: inline-flex; align-items: center; gap: 6px; touch-action: manipulation; }
 
   @media (max-width: 620px) {
-    .footbar { flex-direction: column-reverse; align-items: flex-start; gap: 10px; }
-    .keys { justify-content: flex-start; gap: 14px; }
+    .footbar { flex-direction: column-reverse; align-items: stretch; gap: 12px; }
     #scale { white-space: nowrap; }
+  }
+
+  /* No keyboard to hint at: the controls become the controls. */
+  @media (pointer: coarse) {
+    .keys { gap: 8px; justify-content: space-between; }
+    .keys kbd { display: none; }
+    .keys button {
+      flex: 1 1 auto;
+      justify-content: center;
+      min-height: 46px;
+      padding: 0 14px;
+      font-size: 15px;
+      font-weight: 400;
+      color: var(--bone);
+      border: 1px solid #2f2f2f;
+      border-radius: 999px;
+    }
+    .keys button:active { background: #171717; }
+    #btnPause { flex: 2 1 auto; border-color: var(--red); color: var(--red); }
+    .footbar { font-size: 13px; }
+
+    /* thumbs need a target, not a glyph */
+    .presets { gap: 4px 8px; }
+    .preset { padding: 12px 14px 18px; min-width: 46px; text-align: center; }
+    .preset::after { left: 8px; right: 8px; bottom: 10px; }
+  }
+
+  @media (pointer: coarse) and (max-width: 620px) {
+    /* fullscreen is a desktop projector affordance; on a phone it only steals a slot */
+    #btnFull { display: none; }
+    /* keep the controls inside thumb reach instead of floating mid-screen */
+    #picker { justify-content: flex-end; }
   }
   .keys button { color: var(--smoke); transition: color 0.15s ease; }
   .keys button:hover { color: var(--bone); }
@@ -370,11 +408,11 @@
     <div class="footbar">
       <span id="scale"></span>
       <div class="keys">
-        <button id="btnPause"><kbd>Space</kbd> Pause</button>
-        <button id="btnRestart"><kbd>R</kbd> Restart</button>
-        <button id="btnSound">Sound on</button>
-        <button id="btnFull"><kbd>F</kbd> Fullscreen</button>
-        <button id="btnBack"><kbd>Esc</kbd> Back</button>
+        <button id="btnPause"><kbd>Space</kbd><span class="lbl">Pause</span></button>
+        <button id="btnRestart"><kbd>R</kbd><span class="lbl">Restart</span></button>
+        <button id="btnSound"><span class="lbl">Sound on</span></button>
+        <button id="btnFull"><kbd>F</kbd><span class="lbl">Fullscreen</span></button>
+        <button id="btnBack"><kbd>Esc</kbd><span class="lbl">Back</span></button>
       </div>
     </div>
   </section>
@@ -541,7 +579,8 @@
   let soundOn = true;
   try { soundOn = localStorage.getItem('zebra-sound') !== 'off'; } catch (e) { /* private mode */ }
 
-  function paintSound() { els.btnSound.textContent = soundOn ? 'Sound on' : 'Sound off'; }
+  const setLabel = (btn, text) => { btn.querySelector('.lbl').textContent = text; };
+  function paintSound() { setLabel(els.btnSound, soundOn ? 'Sound on' : 'Sound off'); }
   paintSound();
 
   let audio = null;
@@ -627,6 +666,12 @@
 
     const cellH = h / state.rows;
     const cellW = w / state.cols;
+
+    const fit = cellW / cellH < 40 / 62 ? 'xMidYMax slice' : 'xMidYMax meet';
+    if (fit !== state.fit) {
+      state.fit = fit;
+      for (const t of tufts) t.el.firstElementChild.setAttribute('preserveAspectRatio', fit);
+    }
     const zh = Math.min(cellH * 1.15, cellW * 1.35, h * 0.45);
     els.zebra.style.height = zh + 'px';
     els.zebra.style.width = (zh * 130) / 104 + 'px';
@@ -736,7 +781,7 @@
     els.doneWord.classList.remove('show');
     els.flash.classList.remove('fire');
     els.btnPause.hidden = false;
-    els.btnPause.innerHTML = '<kbd>Space</kbd> Pause';
+    setLabel(els.btnPause, 'Pause');
 
     buildField(Math.round(totalSec / tuftSec));
     if (soundOn) wakeAudio();
@@ -751,13 +796,13 @@
       cancelAnimationFrame(raf);
       els.clock.classList.add('paused');
       els.zebra.classList.add('paused');
-      els.btnPause.innerHTML = '<kbd>Space</kbd> Resume';
+      setLabel(els.btnPause, 'Resume');
     } else {
       state.lostMs += Date.now() - state.pausedAt;
       state.running = true;
       els.clock.classList.remove('paused');
       els.zebra.classList.remove('paused');
-      els.btnPause.innerHTML = '<kbd>Space</kbd> Pause';
+      setLabel(els.btnPause, 'Pause');
       tick();
     }
   }
@@ -792,6 +837,7 @@
   });
 
   els.btnPause.addEventListener('click', togglePause);
+  els.field.addEventListener('click', togglePause);
   $('btnRestart').addEventListener('click', () => start(state.total / 60000));
   $('btnBack').addEventListener('click', toPicker);
   $('btnFull').addEventListener('click', () => {
@@ -811,6 +857,8 @@
     else if (e.key === 'r' || e.key === 'R') { if (state.total) start(state.total / 60000); }
     else if (e.key === 'f' || e.key === 'F') $('btnFull').click();
   });
+
+  if (!document.documentElement.requestFullscreen) $('btnFull').hidden = true;
 
   addEventListener('resize', layout);
 

@@ -20,14 +20,17 @@ It works the other way round too: any timer you start by hand writes its duratio
 
 ## Controls
 
-| Input          | Effect                        |
-| -------------- | ----------------------------- |
-| Click a preset | start 1–60 minutes            |
-| Number + Enter | any duration (1–240 min)      |
-| `Space`        | pause / resume                |
-| `R`            | restart with the same duration |
-| `F`            | fullscreen (for a projector)  |
-| `Esc`          | back to the picker            |
+| Input               | Effect                         |
+| ------------------- | ------------------------------ |
+| Click a preset      | start 1–60 minutes             |
+| Number + Enter      | any duration (1–240 min)       |
+| Tap/click the field | pause / resume                 |
+| `Space`             | pause / resume                 |
+| `R`                 | restart with the same duration |
+| `F`                 | fullscreen (for a projector)   |
+| `Esc`               | back to the picker             |
+
+On a touch device the keyboard hints turn into real buttons — Pause, Restart, Sound, Back — and the presets get thumb-sized targets. Fullscreen is dropped there: it is a projector affordance, and iOS Safari has no Fullscreen API for pages anyway.
 
 ## Granularity
 
