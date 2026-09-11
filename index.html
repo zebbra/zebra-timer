@@ -1,0 +1,819 @@
+<meta charset="utf-8">
+<title>Zebra Timer</title>
+<!-- Zebra Timer v1 -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --ink: #000000;
+    --red: #ff2235;
+    --ash: #2a2a2a;
+    --bone: #ffffff;
+    --smoke: #7d7d7d;
+    --pad: clamp(16px, 3vw, 44px);
+    color-scheme: dark;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--ink);
+    color: var(--bone);
+    font-family: 'Outfit', 'Avenir Next', 'Segoe UI', system-ui, sans-serif;
+    font-weight: 400;
+    -webkit-font-smoothing: antialiased;
+    overflow: hidden;
+    height: 100dvh;
+  }
+
+  .stage {
+    height: 100dvh;
+    display: flex;
+    flex-direction: column;
+    padding: var(--pad);
+    gap: var(--pad);
+  }
+
+  /* ---------- shared chrome ---------- */
+
+  .topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    flex: none;
+  }
+
+  .mark { display: block; width: 40px; height: auto; flex: none; }
+  .mark line { stroke: var(--red); }
+
+  .wordmark {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 17px;
+    letter-spacing: -0.01em;
+    color: var(--smoke);
+  }
+
+  button {
+    font: inherit;
+    color: inherit;
+    background: none;
+    border: 0;
+    padding: 0;
+    cursor: pointer;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--red);
+    outline-offset: 4px;
+    border-radius: 2px;
+  }
+
+  /* ---------- picker ---------- */
+
+  #picker {
+    position: relative;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: clamp(20px, 4vh, 44px);
+    padding-bottom: clamp(90px, 16vh, 170px);
+    min-height: 0;
+  }
+
+  .ask {
+    font-size: clamp(34px, 7vw, 76px);
+    font-weight: 800;
+    letter-spacing: -0.035em;
+    line-height: 0.95;
+    margin: 0;
+  }
+
+  .presets {
+    display: flex;
+    flex-wrap: wrap;
+    gap: clamp(14px, 2.6vw, 40px);
+    align-items: baseline;
+  }
+
+  .preset {
+    position: relative;
+    font-size: clamp(30px, 5.2vw, 62px);
+    font-weight: 600;
+    line-height: 1;
+    letter-spacing: -0.04em;
+    color: var(--red);
+    padding-bottom: 14px;
+    transition: color 0.16s ease;
+  }
+
+  .preset::after {
+    content: '';
+    position: absolute;
+    left: -6px;
+    right: -6px;
+    bottom: 2px;
+    height: 6px;
+    border-radius: 3px;
+    background: var(--red);
+    transform: scaleX(0) skewX(-32deg);
+    transform-origin: left center;
+    transition: transform 0.22s cubic-bezier(0.2, 0.9, 0.3, 1);
+  }
+
+  .preset:hover,
+  .preset:focus-visible { color: var(--bone); }
+  .preset:hover::after,
+  .preset:focus-visible::after { transform: scaleX(1) skewX(-32deg); }
+
+  .custom {
+    display: flex;
+    align-items: baseline;
+    gap: 14px;
+  }
+
+  #minutes {
+    font: inherit;
+    font-size: clamp(30px, 5.2vw, 62px);
+    font-weight: 600;
+    letter-spacing: -0.04em;
+    width: 3.2ch;
+    padding: 0 0 12px;
+    background: none;
+    border: 0;
+    border-bottom: 6px solid var(--ash);
+    border-radius: 0;
+    color: var(--bone);
+    caret-color: var(--red);
+    text-align: center;
+    transition: border-color 0.18s ease;
+    -moz-appearance: textfield;
+  }
+
+  #minutes::-webkit-outer-spin-button,
+  #minutes::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+  #minutes::placeholder { color: var(--ash); }
+  #minutes:focus { outline: none; border-bottom-color: var(--red); }
+
+  .unit {
+    font-size: clamp(17px, 2.2vw, 24px);
+    color: var(--smoke);
+    font-weight: 300;
+  }
+
+  .strip {
+    position: absolute;
+    left: calc(var(--pad) * -1);
+    right: calc(var(--pad) * -1);
+    bottom: calc(var(--pad) * -1);
+    height: clamp(78px, 14vh, 150px);
+    pointer-events: none;
+  }
+
+  #stripGrass {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: flex-end;
+    overflow: hidden;
+    color: var(--red);
+  }
+
+  /* tufts keep their own proportions and run off the edge, like the field does */
+  #stripGrass svg { flex: 0 0 auto; height: 100%; width: auto; aspect-ratio: 40 / 62; }
+
+  .idle-zebra {
+    position: absolute;
+    right: 8%;
+    bottom: 2%;
+    height: 118%;
+    width: auto;
+  }
+
+  /* ---------- running ---------- */
+
+  #run { flex: 1; display: flex; flex-direction: column; gap: var(--pad); min-height: 0; }
+
+  .clock {
+    font-size: clamp(40px, 7.5vw, 96px);
+    font-weight: 800;
+    letter-spacing: -0.05em;
+    line-height: 0.85;
+    font-variant-numeric: tabular-nums;
+    transition: color 0.3s ease;
+  }
+
+  .clock.done { color: var(--red); }
+  .clock.paused { color: var(--smoke); }
+
+  .field {
+    position: relative;
+    flex: 1;
+    min-height: 0;
+  }
+
+  #grid {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    gap: 0;
+  }
+
+  .tuft {
+    color: var(--red);
+    min-width: 0;
+    min-height: 0;
+    transition: color 0.5s ease;
+  }
+
+  .tuft.eaten { color: var(--ash); }
+  .tuft svg { width: 100%; height: 100%; display: block; overflow: visible; }
+
+  .blades {
+    transform: scaleY(var(--g, 1));
+    transform-origin: 50% 60px;
+  }
+
+  .blades line {
+    stroke: currentColor;
+    stroke-width: 3.4;
+    stroke-linecap: round;
+  }
+
+  #zebra {
+    position: absolute;
+    left: 0;
+    top: 0;
+    pointer-events: none;
+    overflow: visible;
+    transition: transform 0.34s cubic-bezier(0.34, 0.9, 0.3, 1);
+    will-change: transform;
+  }
+
+  .chew { animation: chew 0.5s ease-in-out infinite alternate; transform-origin: 76px 32px; }
+  .paused .chew, .finished .chew { animation: none; }
+  .finished .chew { transform: rotate(-62deg); transition: transform 0.5s cubic-bezier(0.3, 1.4, 0.5, 1); }
+  @keyframes chew { from { transform: rotate(0deg); } to { transform: rotate(4deg); } }
+
+  .tail { animation: swish 2.6s ease-in-out infinite alternate; transform-origin: 22px 32px; }
+  @keyframes swish { from { transform: rotate(-7deg); } to { transform: rotate(9deg); } }
+
+  .footbar {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 20px;
+    flex: none;
+    font-size: 14px;
+    font-weight: 300;
+    color: var(--smoke);
+  }
+
+  .keys { display: flex; gap: 18px; flex-wrap: wrap; justify-content: flex-end; }
+
+  @media (max-width: 620px) {
+    .footbar { flex-direction: column-reverse; align-items: flex-start; gap: 10px; }
+    .keys { justify-content: flex-start; gap: 14px; }
+    #scale { white-space: nowrap; }
+  }
+  .keys button { color: var(--smoke); transition: color 0.15s ease; }
+  .keys button:hover { color: var(--bone); }
+  kbd {
+    font: inherit;
+    font-weight: 400;
+    color: var(--bone);
+  }
+
+  #flash {
+    position: fixed;
+    inset: 0;
+    background: var(--red);
+    opacity: 0;
+    pointer-events: none;
+  }
+  #flash.fire { animation: flash 1.5s ease-out; }
+  @keyframes flash {
+    0%, 100% { opacity: 0; }
+    6% { opacity: 0.92; }
+    22% { opacity: 0; }
+    34% { opacity: 0.8; }
+    50% { opacity: 0; }
+    62% { opacity: 0.65; }
+  }
+
+  .done-word {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    font-size: clamp(56px, 15vw, 190px);
+    font-weight: 800;
+    letter-spacing: -0.055em;
+    color: var(--bone);
+    opacity: 0;
+    transition: opacity 0.6s ease 0.4s;
+    pointer-events: none;
+  }
+  .done-word.show { opacity: 1; }
+
+  [hidden] { display: none !important; }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::after { animation: none !important; transition-duration: 0.01ms !important; }
+    #flash.fire { animation: none; opacity: 0.55; transition: opacity 1.2s ease; }
+  }
+</style>
+
+<div class="stage">
+  <div class="topbar">
+    <div class="wordmark">
+      <svg class="mark" viewBox="0 0 100 100" aria-hidden="true">
+        <g stroke-linecap="round" fill="none" stroke-width="13">
+          <line x1="12" y1="56" x2="40" y2="22"/>
+          <line x1="10" y1="90" x2="58" y2="32"/>
+          <line x1="42" y1="90" x2="90" y2="32"/>
+          <line x1="72" y1="90" x2="80" y2="80" stroke-width="12"/>
+        </g>
+      </svg>
+      <span>zebbra timer</span>
+    </div>
+    <div class="clock" id="clock" hidden>00:00</div>
+  </div>
+
+  <!-- ================= picker ================= -->
+  <section id="picker">
+    <h1 class="ask">How long?</h1>
+    <div class="presets" id="presets"></div>
+    <div class="custom">
+      <input id="minutes" type="number" min="1" max="240" step="1" placeholder="12" inputmode="numeric" aria-label="Minutes">
+      <span class="unit">minutes — Enter starts</span>
+    </div>
+    <div class="strip" aria-hidden="true">
+      <div id="stripGrass"></div>
+      <svg class="idle-zebra" viewBox="0 0 130 104" id="idleZebra"></svg>
+    </div>
+  </section>
+
+  <!-- ================= running ================= -->
+  <section id="run" hidden>
+    <div class="field" id="field">
+      <div id="grid"></div>
+      <svg id="zebra" viewBox="0 0 130 104" aria-hidden="true"></svg>
+      <div class="done-word" id="doneWord">Done</div>
+    </div>
+    <div class="footbar">
+      <span id="scale"></span>
+      <div class="keys">
+        <button id="btnPause"><kbd>Space</kbd> Pause</button>
+        <button id="btnRestart"><kbd>R</kbd> Restart</button>
+        <button id="btnSound">Sound on</button>
+        <button id="btnFull"><kbd>F</kbd> Fullscreen</button>
+        <button id="btnBack"><kbd>Esc</kbd> Back</button>
+      </div>
+    </div>
+  </section>
+</div>
+
+<div id="flash"></div>
+
+<script>
+  'use strict';
+
+  const PARAMS = new URLSearchParams(location.search);
+  const SPEED = Math.max(1, Number(PARAMS.get('speed')) || 1);
+  const PRESETS = [1, 2, 3, 5, 10, 15, 20, 30, 45, 60];
+
+  // ?min=12 starts a 12 minute countdown the moment the page opens
+  function paramMinutes() {
+    const raw = PARAMS.get('min');
+    if (raw === null) return 0;
+    const n = Math.round(Number(raw));
+    return Number.isFinite(n) && n >= 1 && n <= 240 ? n : 0;
+  }
+
+  const $ = (id) => document.getElementById(id);
+  const els = {
+    picker: $('picker'), run: $('run'), grid: $('grid'), field: $('field'),
+    clock: $('clock'), zebra: $('zebra'), idleZebra: $('idleZebra'), scale: $('scale'),
+    flash: $('flash'), doneWord: $('doneWord'), minutes: $('minutes'), presets: $('presets'),
+    btnPause: $('btnPause'), btnSound: $('btnSound'),
+  };
+
+  /* ---------- granularity ----------
+     One tuft is one minute whenever that lands between 24 and 60 tufts.
+     Shorter timers step down to 30 / 15 / 10 / 5 s, longer ones up to 2 / 5 min. */
+
+  const FINER = [30, 15, 10, 5];
+  const COARSER = [120, 300];
+
+  function tuftSeconds(totalSec) {
+    const atMinute = totalSec / 60;
+    if (atMinute > 60) {
+      for (const c of COARSER) if (totalSec / c <= 60) return c;
+      return COARSER[COARSER.length - 1];
+    }
+    if (atMinute < 24) {
+      for (const c of FINER) if (totalSec / c >= 24) return c;
+      return FINER[FINER.length - 1];
+    }
+    return 60;
+  }
+
+  function scaleLabel(sec) {
+    if (sec === 60) return '1 tuft = 1 minute';
+    if (sec < 60) return `1 tuft = ${sec} seconds`;
+    return `1 tuft = ${sec / 60} minutes`;
+  }
+
+  /* ---------- grass ---------- */
+
+  function rng(seed) {
+    let s = seed * 2654435761 % 4294967296;
+    return () => {
+      s = (s * 1664525 + 1013904223) % 4294967296;
+      return s / 4294967296;
+    };
+  }
+
+  function tuftMarkup(i) {
+    const r = rng(i + 7);
+    const n = 7 + Math.floor(r() * 3);
+    let lines = '';
+    for (let b = 0; b < n; b++) {
+      const x0 = -2 + (b * 44) / (n - 1) + (r() - 0.5) * 5;
+      const len = 22 + r() * 30;
+      const lean = 0.26 + r() * 0.24;
+      const x1 = x0 + len * lean;
+      const y1 = 60 - len;
+      const op = (0.74 + r() * 0.26).toFixed(2);
+      if (r() < 0.28) {
+        // split blade, echoing the broken stripes of the zebbra mark
+        const mx = x0 + (x1 - x0) * 0.5, my = 60 + (y1 - 60) * 0.5;
+        const gx = x0 + (x1 - x0) * 0.68, gy = 60 + (y1 - 60) * 0.68;
+        lines += `<line x1="${x0.toFixed(1)}" y1="60" x2="${mx.toFixed(1)}" y2="${my.toFixed(1)}" opacity="${op}"/>`;
+        lines += `<line x1="${gx.toFixed(1)}" y1="${gy.toFixed(1)}" x2="${x1.toFixed(1)}" y2="${y1.toFixed(1)}" opacity="${op}"/>`;
+      } else {
+        lines += `<line x1="${x0.toFixed(1)}" y1="60" x2="${x1.toFixed(1)}" y2="${y1.toFixed(1)}" opacity="${op}"/>`;
+      }
+    }
+    return `<svg viewBox="0 0 40 62" preserveAspectRatio="xMidYMax meet"><g class="blades">${lines}</g></svg>`;
+  }
+
+  /* ---------- zebra ---------- */
+
+  /* Side view, head down in the grass, facing right. Stripes are the same
+     45-degree rounded stroke as the zebbra mark and the grass blades. */
+  let zebraSeq = 0;
+  function zebraMarkup() {
+    const u = 'z' + (zebraSeq++);
+    return `
+    <defs>
+      <clipPath id="body-${u}"><rect x="16" y="26" width="70" height="32" rx="16"/></clipPath>
+    </defs>
+
+    <g class="tail">
+      <path d="M24 32 C12 35 7 48 10 60" fill="none" stroke="#ffffff" stroke-width="5" stroke-linecap="round"/>
+      <path d="M10 58 C12 66 10 74 11 80" fill="none" stroke="#141414" stroke-width="8" stroke-linecap="round"/>
+    </g>
+
+    <g fill="#b5b5b5">
+      <rect x="20" y="46" width="8" height="54" rx="4"/>
+      <rect x="78" y="46" width="8" height="54" rx="4"/>
+    </g>
+
+    <rect x="16" y="26" width="70" height="32" rx="16" fill="#ffffff"/>
+    <g clip-path="url(#body-${u})" stroke="#141414" stroke-linecap="butt" fill="none" stroke-width="6">
+      <line x1="12" y1="62" x2="42" y2="22"/>
+      <line x1="23.5" y1="62" x2="53.5" y2="22"/>
+      <line x1="35" y1="62" x2="65" y2="22"/>
+      <line x1="46.5" y1="62" x2="76.5" y2="22"/>
+      <line x1="58" y1="62" x2="88" y2="22"/>
+      <line x1="69.5" y1="62" x2="99.5" y2="22"/>
+      <line x1="81" y1="62" x2="111" y2="22"/>
+    </g>
+
+    <g fill="#ffffff">
+      <rect x="28" y="46" width="9.5" height="54" rx="4.75"/>
+      <rect x="68" y="46" width="9.5" height="54" rx="4.75"/>
+    </g>
+    <g fill="#141414">
+      <rect x="20" y="90" width="8" height="10" rx="3"/>
+      <rect x="78" y="90" width="8" height="10" rx="3"/>
+      <rect x="28" y="90" width="9.5" height="10" rx="3.5"/>
+      <rect x="68" y="90" width="9.5" height="10" rx="3.5"/>
+    </g>
+
+    <g class="chew">
+      <line x1="76" y1="32" x2="100" y2="70" stroke="#ffffff" stroke-width="24" stroke-linecap="round"/>
+      <g stroke="#141414" stroke-linecap="round" fill="none" stroke-width="5.5">
+        <line x1="89.7" y1="35.0" x2="72.8" y2="45.7"/>
+        <line x1="96.5" y1="45.7" x2="79.5" y2="56.3"/>
+        <line x1="103.2" y1="56.3" x2="86.3" y2="67.0"/>
+      </g>
+      <path d="M85.4 26.0 L93.8 39.3 L102.2 52.6 L109.4 64.0" fill="none" stroke="#141414" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round"/>
+
+      <path d="M100 62 L110 47 L109 63 Z" fill="#ffffff"/>
+      <path d="M102.5 61 L108 51 L107 61.5 Z" fill="#6f6f6f"/>
+
+      <line x1="96" y1="62" x2="115" y2="91" stroke="#ffffff" stroke-width="17" stroke-linecap="round"/>
+      <line x1="111" y1="86" x2="115" y2="91" stroke="#333333" stroke-width="17" stroke-linecap="round"/>
+      <g stroke="#141414" stroke-linecap="round" fill="none" stroke-width="5">
+        <line x1="109.9" y1="71.1" x2="98.3" y2="78.9"/>
+        <line x1="114.3" y1="77.6" x2="102.8" y2="85.4"/>
+      </g>
+      <circle cx="103.5" cy="69.5" r="3" fill="#141414"/>
+    </g>
+  `;
+  }
+
+  els.zebra.innerHTML = zebraMarkup();
+  els.idleZebra.innerHTML = zebraMarkup();
+  $('stripGrass').innerHTML = Array.from({ length: 28 }, (_, i) => tuftMarkup(i + 40)).join('');
+
+  /* ---------- sound ---------- */
+
+  let soundOn = true;
+  try { soundOn = localStorage.getItem('zebra-sound') !== 'off'; } catch (e) { /* private mode */ }
+
+  function paintSound() { els.btnSound.textContent = soundOn ? 'Sound on' : 'Sound off'; }
+  paintSound();
+
+  let audio = null;
+  function wakeAudio() {
+    try {
+      audio = audio || new (window.AudioContext || window.webkitAudioContext)();
+      if (audio.state === 'suspended') audio.resume();
+    } catch (e) { /* no audio available */ }
+  }
+  // a timer opened from a link has had no user gesture yet, so the audio context
+  // stays suspended until the first interaction of any kind
+  addEventListener('pointerdown', wakeAudio);
+  addEventListener('keydown', wakeAudio);
+
+  function chime() {
+    if (!soundOn) return;
+    try {
+      audio = audio || new (window.AudioContext || window.webkitAudioContext)();
+      if (audio.state === 'suspended') audio.resume();
+      [0, 0.16, 0.34].forEach((delay, i) => {
+        const t = audio.currentTime + delay;
+        const osc = audio.createOscillator();
+        const gain = audio.createGain();
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime([523.25, 659.25, 880][i], t);
+        gain.gain.setValueAtTime(0.0001, t);
+        gain.gain.exponentialRampToValueAtTime(0.28, t + 0.02);
+        gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.9);
+        osc.connect(gain).connect(audio.destination);
+        osc.start(t);
+        osc.stop(t + 1);
+      });
+    } catch (e) { /* no audio available */ }
+  }
+
+  /* ---------- timer state ---------- */
+
+  const state = {
+    total: 0,        // ms
+    tuftMs: 60000,
+    count: 0,
+    startedAt: 0,
+    pausedAt: 0,
+    lostMs: 0,
+    running: false,
+    finished: false,
+    cols: 1,
+    rows: 1,
+  };
+
+  let tufts = [];
+  let raf = 0;
+
+  function buildField(count) {
+    state.count = count;
+    els.grid.innerHTML = Array.from({ length: count }, (_, i) =>
+      `<div class="tuft">${tuftMarkup(i)}</div>`).join('');
+    tufts = [...els.grid.children].map((el) => ({
+      el,
+      blades: el.querySelector('.blades'),
+      eaten: false,
+    }));
+    layout();
+  }
+
+  function layout() {
+    const w = els.field.clientWidth;
+    const h = els.field.clientHeight;
+    if (!w || !h || !state.count) return;
+
+    let best = { cols: 1, score: Infinity };
+    for (let cols = 1; cols <= state.count; cols++) {
+      const rows = Math.ceil(state.count / cols);
+      const ratio = (w / cols) / (h / rows);
+      const waste = (cols * rows - state.count) / state.count;
+      const score = Math.abs(Math.log(ratio / 0.645)) + waste * 2.5;
+      if (score < best.score) best = { cols, score };
+    }
+    state.cols = best.cols;
+    state.rows = Math.ceil(state.count / state.cols);
+    els.grid.style.gridTemplateColumns = `repeat(${state.cols}, 1fr)`;
+    els.grid.style.gridTemplateRows = `repeat(${state.rows}, 1fr)`;
+
+    const cellH = h / state.rows;
+    const cellW = w / state.cols;
+    const zh = Math.min(cellH * 1.15, cellW * 1.35, h * 0.45);
+    els.zebra.style.height = zh + 'px';
+    els.zebra.style.width = (zh * 130) / 104 + 'px';
+    placeZebra();
+  }
+
+  function placeZebra() {
+    const w = els.field.clientWidth;
+    const h = els.field.clientHeight;
+    if (!w || !h || !state.count) return;
+    const idx = Math.min(state.eatingIndex ?? 0, state.count - 1);
+    const col = idx % state.cols;
+    const row = Math.floor(idx / state.cols);
+    const cellW = w / state.cols;
+    const cellH = h / state.rows;
+    const zw = els.zebra.clientWidth || (cellH * 1.25 * 130) / 104;
+    const zh = els.zebra.clientHeight || cellH * 1.25;
+    // muzzle sits on the tuft being eaten; the body trails over what is already grazed
+    const x = Math.max(col * cellW + cellW * 0.5 - zw * 0.9, -zw * 0.3);
+    const y = (row + 1) * cellH - zh;
+    els.zebra.style.transform = `translate(${x}px, ${y}px)`;
+  }
+
+  function fmt(ms) {
+    const s = Math.max(0, Math.ceil(ms / 1000));
+    return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+  }
+
+  function elapsed() {
+    const now = state.running ? Date.now() : state.pausedAt;
+    return (now - state.startedAt - state.lostMs) * SPEED;
+  }
+
+  function tick() {
+    const done = elapsed();
+    const left = state.total - done;
+    els.clock.textContent = fmt(left);
+
+    const eatenExact = Math.min(done / state.tuftMs, state.count);
+    const full = Math.floor(eatenExact);
+    state.eatingIndex = Math.min(full, state.count - 1);
+
+    for (let i = 0; i < state.count; i++) {
+      const t = tufts[i];
+      if (i < full) {
+        if (!t.eaten) {
+          t.eaten = true;
+          t.el.classList.add('eaten');
+          t.blades.style.setProperty('--g', '0.16');
+        }
+      } else if (i === full) {
+        t.blades.style.setProperty('--g', (1 - (eatenExact - full) * 0.84).toFixed(3));
+      }
+    }
+    placeZebra();
+
+    if (left <= 0) return finish();
+    if (state.running) raf = requestAnimationFrame(tick);
+  }
+
+  function finish() {
+    state.running = false;
+    state.finished = true;
+    cancelAnimationFrame(raf);
+    els.clock.textContent = '0:00';
+    els.clock.classList.add('done');
+    els.clock.classList.remove('paused');
+    els.zebra.classList.add('finished');
+    els.doneWord.classList.add('show');
+    els.flash.classList.remove('fire');
+    void els.flash.offsetWidth;
+    els.flash.classList.add('fire');
+    els.btnPause.hidden = true;
+    chime();
+  }
+
+  function syncUrl(mins) {
+    try {
+      const p = new URLSearchParams(location.search);
+      if (mins) p.set('min', String(mins)); else p.delete('min');
+      const q = p.toString();
+      history.replaceState(null, '', location.pathname + (q ? '?' + q : ''));
+    } catch (e) { /* file:// or blocked history */ }
+  }
+
+  function start(minutes) {
+    const mins = Math.min(240, Math.max(1, Math.round(minutes)));
+    const totalSec = mins * 60;
+    const tuftSec = tuftSeconds(totalSec);
+
+    state.total = totalSec * 1000;
+    state.tuftMs = tuftSec * 1000;
+    state.startedAt = Date.now();
+    state.pausedAt = 0;
+    state.lostMs = 0;
+    state.running = true;
+    state.finished = false;
+    state.eatingIndex = 0;
+
+    syncUrl(mins);
+    els.scale.textContent = scaleLabel(tuftSec);
+    els.picker.hidden = true;
+    els.run.hidden = false;
+    els.clock.hidden = false;
+    els.clock.classList.remove('done', 'paused');
+    els.zebra.classList.remove('finished', 'paused');
+    els.doneWord.classList.remove('show');
+    els.flash.classList.remove('fire');
+    els.btnPause.hidden = false;
+    els.btnPause.innerHTML = '<kbd>Space</kbd> Pause';
+
+    buildField(Math.round(totalSec / tuftSec));
+    if (soundOn) wakeAudio();
+    tick();
+  }
+
+  function togglePause() {
+    if (state.finished || !state.total) return;
+    if (state.running) {
+      state.running = false;
+      state.pausedAt = Date.now();
+      cancelAnimationFrame(raf);
+      els.clock.classList.add('paused');
+      els.zebra.classList.add('paused');
+      els.btnPause.innerHTML = '<kbd>Space</kbd> Resume';
+    } else {
+      state.lostMs += Date.now() - state.pausedAt;
+      state.running = true;
+      els.clock.classList.remove('paused');
+      els.zebra.classList.remove('paused');
+      els.btnPause.innerHTML = '<kbd>Space</kbd> Pause';
+      tick();
+    }
+  }
+
+  function toPicker() {
+    state.running = false;
+    state.total = 0;
+    cancelAnimationFrame(raf);
+    els.run.hidden = true;
+    els.clock.hidden = true;
+    els.picker.hidden = false;
+    els.flash.classList.remove('fire');
+    syncUrl(null);
+    els.minutes.focus();
+  }
+
+  /* ---------- wiring ---------- */
+
+  els.presets.innerHTML = PRESETS.map((m) =>
+    `<button class="preset" data-min="${m}">${m}</button>`).join('');
+
+  els.presets.addEventListener('click', (e) => {
+    const btn = e.target.closest('.preset');
+    if (btn) start(Number(btn.dataset.min));
+  });
+
+  els.minutes.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && Number(els.minutes.value) >= 1) {
+      start(Number(els.minutes.value));
+      els.minutes.blur();
+    }
+  });
+
+  els.btnPause.addEventListener('click', togglePause);
+  $('btnRestart').addEventListener('click', () => start(state.total / 60000));
+  $('btnBack').addEventListener('click', toPicker);
+  $('btnFull').addEventListener('click', () => {
+    if (document.fullscreenElement) document.exitFullscreen();
+    else document.documentElement.requestFullscreen?.();
+  });
+  els.btnSound.addEventListener('click', () => {
+    soundOn = !soundOn;
+    paintSound();
+    try { localStorage.setItem('zebra-sound', soundOn ? 'on' : 'off'); } catch (e) {}
+  });
+
+  addEventListener('keydown', (e) => {
+    if (e.target.tagName === 'INPUT') return;
+    if (e.code === 'Space') { e.preventDefault(); togglePause(); }
+    else if (e.key === 'Escape') toPicker();
+    else if (e.key === 'r' || e.key === 'R') { if (state.total) start(state.total / 60000); }
+    else if (e.key === 'f' || e.key === 'F') $('btnFull').click();
+  });
+
+  addEventListener('resize', layout);
+
+  const opening = paramMinutes();
+  if (opening) start(opening);
+  else els.minutes.focus();
+</script>
