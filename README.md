@@ -44,7 +44,7 @@ Five minutes would be five tufts — the meadow looks empty and the grazing jump
 
 ## Slack
 
-Workflow Builder, no code required — see [`SLACK.md`](SLACK.md).
+A Workflow Builder shortcut that asks for minutes and DMs you the link — no code. See [`SLACK.md`](SLACK.md).
 
 ## Development
 
