@@ -1,10 +1,18 @@
 # Zebra Timer
 
-A workshop countdown. The screen fills with red grass; a zebra grazes its way through it. Time left is the red area still standing — readable from the back of the room without reading the clock.
+A countdown you can read from the back of the room. The screen fills with red grass, a zebra grazes its way through it, and the red still standing is the time still left.
 
-**Live:** https://zebbra.github.io/zebra-timer/
+![The timer running: a zebra grazes through a field of red grass while the clock counts down](docs/demo.gif)
 
-Single file, no dependencies, no build step.
+**→ [zebbra.github.io/zebra-timer](https://zebbra.github.io/zebra-timer/)**  ·  straight into [12 min](https://zebbra.github.io/zebra-timer/?min=12) · [20 min](https://zebbra.github.io/zebra-timer/?min=20) · [45 min](https://zebbra.github.io/zebra-timer/?min=45)
+
+One HTML file. No dependencies, no build step, no accounts, no tracking.
+
+## Why grass
+
+A digit tells you 7:41. It does not tell you that you are two thirds through and should start wrapping up — that takes arithmetic, and mid-discussion nobody does it. A field that is visibly draining says the same thing at a glance, from six metres away, without anyone breaking off. The exact number is still in the corner for when you actually want it.
+
+![The picker: How long, with presets from 1 to 60 minutes and a free input](docs/picker.png)
 
 ## Starting straight from a link
 
@@ -16,7 +24,7 @@ https://zebbra.github.io/zebra-timer/?min=12
 
 It works the other way round too: any timer you start by hand writes its duration into the address bar, so copying the URL is enough to share it.
 
-> **Sound:** A timer opened from a link has seen no user interaction yet, so browsers keep the audio context suspended. The end chime only fires once somebody has clicked into the window or pressed a key. The visual end signal (full-screen flash) is unaffected.
+> **Sound:** A timer opened from a link has seen no user interaction yet, so browsers keep the audio context suspended. The end chime only fires once somebody has clicked into the window or pressed a key. The visual end signal — a full-screen flash — is unaffected.
 
 ## Controls
 
@@ -30,6 +38,8 @@ It works the other way round too: any timer you start by hand writes its duratio
 | `F`                 | fullscreen (for a projector)   |
 | `Esc`               | back to the picker             |
 
+<img src="docs/phone.png" alt="The timer on a phone, with touch controls along the bottom" width="260" align="right">
+
 On a touch device the keyboard hints turn into real buttons and the presets get thumb-sized targets. Fullscreen only appears where the browser actually has the API — it shows on Android, and is hidden on iOS Safari, which has none for pages.
 
 ## Granularity
@@ -41,6 +51,8 @@ One tuft is one minute, as long as that lands between 24 and 60 tufts. Shorter t
 
 Five minutes would be five tufts — the meadow looks empty and the grazing jumps. Three hours would be 180, which nobody can read. Holding the count between 24 and 60 keeps both ends usable without making the unit awkward.
 </details>
+
+<br clear="right">
 
 ## Slack
 
