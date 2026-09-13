@@ -34,13 +34,22 @@ It works the other way round too: any timer you start by hand writes its duratio
 | Number + Enter      | any duration (1–240 min)       |
 | Tap/click the field | pause / resume                 |
 | `Space`             | pause / resume                 |
+| `↑` / `↓`           | add or drop a minute, mid-run  |
 | `R`                 | restart with the same duration |
 | `F`                 | fullscreen (for a projector)   |
 | `Esc`               | back to the picker             |
 
+"Give us two more minutes" is the most common thing said in any workshop, so `↑` grows the meadow while it runs. Once the timer has run out, `↑` means one more minute from now rather than from a total that is already in the past.
+
 <img src="docs/phone.png" alt="The timer on a phone, with touch controls along the bottom" width="260" align="right">
 
 On a touch device the keyboard hints turn into real buttons and the presets get thumb-sized targets. Fullscreen only appears where the browser actually has the API — it shows on Android, and is hidden on iOS Safari, which has none for pages.
+
+## When it runs out
+
+The meadow empties, the zebra looks up, the screen flashes and the chime plays. Then the clock turns red and counts up — `+1:40` tells the room exactly how far over the session is running, which is usually the number somebody wants.
+
+The tab title carries the countdown too (`7:41 · Zebra Timer`), so a timer on a background tab is still readable from the tab strip. While a timer runs the page holds a screen wake lock, so the display does not go to sleep mid-countdown.
 
 ## Granularity
 
@@ -57,6 +66,10 @@ Five minutes would be five tufts — the meadow looks empty and the grazing jump
 ## Slack
 
 A Workflow Builder shortcut that asks for minutes and DMs you the link — no code. See [`SLACK.md`](SLACK.md).
+
+## License
+
+MIT — see [`LICENSE`](LICENSE). Use it, fork it, rebrand it. The stripes are zebbra's, the idea is not.
 
 ## Development
 

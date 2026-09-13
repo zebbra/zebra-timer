@@ -3,6 +3,15 @@
 <title>Zebra Timer</title>
 <!-- Zebra Timer v1 -->
 <link rel="icon" href='data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"%3E%3Crect width="100" height="100" fill="%23000"/%3E%3Cg stroke="%23ff2235" stroke-linecap="round" fill="none" stroke-width="13"%3E%3Cline x1="12" y1="56" x2="40" y2="22"/%3E%3Cline x1="10" y1="90" x2="58" y2="32"/%3E%3Cline x1="42" y1="90" x2="90" y2="32"/%3E%3Cline x1="72" y1="90" x2="80" y2="80" stroke-width="12"/%3E%3C/g%3E%3C/svg%3E'>
+<meta name="description" content="A workshop countdown you can read from the back of the room: a zebra grazes through a field of red grass, and the red still standing is the time still left.">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Zebra Timer">
+<meta property="og:description" content="A workshop countdown you can read from the back of the room. The red still standing is the time still left.">
+<meta property="og:url" content="https://zebbra.github.io/zebra-timer/">
+<meta property="og:image" content="https://zebbra.github.io/zebra-timer/docs/social.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&display=swap" rel="stylesheet">
@@ -216,6 +225,7 @@
 
   .clock.done { color: var(--red); }
   .clock.paused { color: var(--smoke); }
+  .clock.over { color: var(--red); }
 
   .field {
     position: relative;
@@ -407,6 +417,8 @@
       <span id="scale"></span>
       <div class="keys">
         <button id="btnPause"><kbd>Space</kbd><span class="lbl">Pause</span></button>
+        <button id="btnPlus"><kbd>&uarr;</kbd><span class="lbl">+1</span></button>
+        <button id="btnMinus"><kbd>&darr;</kbd><span class="lbl">&minus;1</span></button>
         <button id="btnRestart"><kbd>R</kbd><span class="lbl">Restart</span></button>
         <button id="btnSound"><span class="lbl">Sound on</span></button>
         <button id="btnFull"><kbd>F</kbd><span class="lbl">Fullscreen</span></button>
@@ -614,6 +626,26 @@
     } catch (e) { /* no audio available */ }
   }
 
+  /* ---------- keep the screen alive ---------- */
+
+  let wakeLock = null;
+  async function holdScreenAwake() {
+    try {
+      if ('wakeLock' in navigator && !wakeLock) {
+        wakeLock = await navigator.wakeLock.request('screen');
+        wakeLock.addEventListener('release', () => { wakeLock = null; });
+      }
+    } catch (e) { /* denied, unsupported, or not a secure context */ }
+  }
+  function letScreenSleep() {
+    try { if (wakeLock) wakeLock.release(); } catch (e) {}
+    wakeLock = null;
+  }
+  // the lock is dropped whenever the tab goes away, so take it again on return
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible' && state.running) holdScreenAwake();
+  });
+
   /* ---------- timer state ---------- */
 
   const state = {
@@ -693,9 +725,16 @@
     els.zebra.style.transform = `translate(${x}px, ${y}px)`;
   }
 
-  function fmt(ms) {
-    const s = Math.max(0, Math.ceil(ms / 1000));
+  function clockText(s) {
     return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+  }
+  const fmtLeft = (ms) => clockText(Math.max(0, Math.ceil(ms / 1000)));
+  const fmtOver = (ms) => '+' + clockText(Math.max(0, Math.floor(ms / 1000)));
+
+  let shownTitle = '';
+  function paintTitle(prefix) {
+    const t = prefix ? prefix + ' \u00b7 Zebra Timer' : 'Zebra Timer';
+    if (t !== shownTitle) { shownTitle = t; document.title = t; }
   }
 
   function elapsed() {
@@ -706,7 +745,15 @@
   function tick() {
     const done = elapsed();
     const left = state.total - done;
-    els.clock.textContent = fmt(left);
+
+    if (left > 0) {
+      els.clock.textContent = fmtLeft(left);
+    } else {
+      if (!state.finished) finish();
+      // the meadow is bare; keep counting so the room sees how far over it ran
+      els.clock.textContent = fmtOver(-left);
+    }
+    paintTitle((state.running ? '' : '\u23f8 ') + els.clock.textContent);
 
     const eatenExact = Math.min(done / state.tuftMs, state.count);
     const full = Math.floor(eatenExact);
@@ -726,24 +773,58 @@
     }
     placeZebra();
 
-    if (left <= 0) return finish();
     if (state.running) raf = requestAnimationFrame(tick);
   }
 
   function finish() {
-    state.running = false;
     state.finished = true;
-    cancelAnimationFrame(raf);
-    els.clock.textContent = '0:00';
-    els.clock.classList.add('done');
+    els.clock.classList.add('over');
     els.clock.classList.remove('paused');
     els.zebra.classList.add('finished');
     els.doneWord.classList.add('show');
     els.flash.classList.remove('fire');
     void els.flash.offsetWidth;
     els.flash.classList.add('fire');
-    els.btnPause.hidden = true;
     chime();
+  }
+
+  /* ---------- stretching a running timer ---------- */
+
+  function resizeField(n) {
+    if (n === state.count) return;
+    if (n > state.count) {
+      els.grid.insertAdjacentHTML('beforeend', Array.from({ length: n - state.count },
+        (_, k) => `<div class="tuft">${tuftMarkup(state.count + k)}</div>`).join(''));
+    } else {
+      while (els.grid.children.length > n) els.grid.lastElementChild.remove();
+    }
+    state.count = n;
+    tufts = [...els.grid.children].map((el) => ({
+      el, blades: el.querySelector('.blades'), eaten: el.classList.contains('eaten'),
+    }));
+    state.fit = null;
+    layout();
+  }
+
+  // "give us two more minutes" is the single most common thing a facilitator says
+  function adjust(deltaMin) {
+    if (!state.total) return;
+    const done = elapsed();
+    // once it has run out, "+1" means one more minute from now, not from a total in the past
+    const base = state.finished ? done : state.total;
+    const next = Math.min(240 * 60000, Math.max(done + 5000, base + deltaMin * 60000));
+    if (next === state.total) return;
+    state.total = next;
+    resizeField(Math.max(1, Math.round(next / state.tuftMs)));
+    if (state.finished && next > done) {
+      state.finished = false;
+      els.clock.classList.remove('over');
+      els.zebra.classList.remove('finished');
+      els.doneWord.classList.remove('show');
+      els.flash.classList.remove('fire');
+    }
+    syncUrl(Math.round(next / 60000));
+    if (!state.running) tick();
   }
 
   function syncUrl(mins) {
@@ -774,30 +855,34 @@
     els.picker.hidden = true;
     els.run.hidden = false;
     els.clock.hidden = false;
-    els.clock.classList.remove('done', 'paused');
+    els.clock.classList.remove('over', 'paused');
     els.zebra.classList.remove('finished', 'paused');
     els.doneWord.classList.remove('show');
     els.flash.classList.remove('fire');
     els.btnPause.hidden = false;
     setLabel(els.btnPause, 'Pause');
 
+    holdScreenAwake();
     buildField(Math.round(totalSec / tuftSec));
     if (soundOn) wakeAudio();
     tick();
   }
 
   function togglePause() {
-    if (state.finished || !state.total) return;
+    if (!state.total) return;
     if (state.running) {
       state.running = false;
       state.pausedAt = Date.now();
       cancelAnimationFrame(raf);
+      letScreenSleep();
       els.clock.classList.add('paused');
       els.zebra.classList.add('paused');
       setLabel(els.btnPause, 'Resume');
+      tick();
     } else {
       state.lostMs += Date.now() - state.pausedAt;
       state.running = true;
+      holdScreenAwake();
       els.clock.classList.remove('paused');
       els.zebra.classList.remove('paused');
       setLabel(els.btnPause, 'Pause');
@@ -813,6 +898,8 @@
     els.clock.hidden = true;
     els.picker.hidden = false;
     els.flash.classList.remove('fire');
+    letScreenSleep();
+    paintTitle('');
     syncUrl(null);
     els.minutes.focus();
   }
@@ -836,6 +923,8 @@
 
   els.btnPause.addEventListener('click', togglePause);
   els.field.addEventListener('click', togglePause);
+  $('btnPlus').addEventListener('click', () => adjust(1));
+  $('btnMinus').addEventListener('click', () => adjust(-1));
   $('btnRestart').addEventListener('click', () => start(state.total / 60000));
   $('btnBack').addEventListener('click', toPicker);
   $('btnFull').addEventListener('click', () => {
@@ -854,6 +943,8 @@
     else if (e.key === 'Escape') toPicker();
     else if (e.key === 'r' || e.key === 'R') { if (state.total) start(state.total / 60000); }
     else if (e.key === 'f' || e.key === 'F') $('btnFull').click();
+    else if (e.key === 'ArrowUp') { e.preventDefault(); adjust(1); }
+    else if (e.key === 'ArrowDown') { e.preventDefault(); adjust(-1); }
   });
 
   if (!document.documentElement.requestFullscreen) $('btnFull').hidden = true;
