@@ -36,6 +36,7 @@ It works the other way round too: any timer you start by hand writes its duratio
 | `Space`             | pause / resume                 |
 | `↑` / `↓`           | add or drop a minute, mid-run  |
 | `R`                 | restart with the same duration |
+| `S`                 | mute or unmute the end chime   |
 | `F`                 | fullscreen (for a projector)   |
 | `Esc`               | back to the picker             |
 
@@ -75,4 +76,4 @@ MIT — see [`LICENSE`](LICENSE). Use it, fork it, rebrand it. The stripes are z
 
 `?speed=60` runs the clock 60× faster, so a 12-minute timer is done in 12 seconds. Combine them: `?min=12&speed=60`.
 
-Colours, zebra stripes and grass blades all use the same stroke as the zebbra logomark: 45°, round caps, varying lengths, some broken into segments. Brand red is `#ff2235`.
+Colours, zebra stripes and grass blades all use the same stroke as the zebbra logomark: 45°, round caps, varying lengths, some broken into segments. Brand red is `#f94141`, and the logomark is zebbra's own.
